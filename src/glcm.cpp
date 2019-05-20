@@ -44,6 +44,7 @@
  *   void
 =====================================================================
 */
+
 void GLCM::getOneChannel(Mat src, Mat& dstChannel, RGBChannel channel)
 {
     // 若输入图像已经是灰度图，则直接输出
@@ -566,17 +567,17 @@ void GLCM::CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& im
             float energy, contrast, homogenity, entropy;
             energy = contrast = homogenity = entropy = 0;
 
-            CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_0);
-            NormalizeMat(glcm_win, glcm_norm);
-            CalcuOneTextureEValue(glcm_norm, EValue, false);
-            energy += EValue.energy; contrast += EValue.contrast;
-            homogenity += EValue.homogenity; entropy += EValue.entropy;
+            // CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_0);
+            // NormalizeMat(glcm_win, glcm_norm);
+            // CalcuOneTextureEValue(glcm_norm, EValue, false);
+            // energy += EValue.energy; contrast += EValue.contrast;
+            // homogenity += EValue.homogenity; entropy += EValue.entropy;
 
-            CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_45);
-            NormalizeMat(glcm_win, glcm_norm);
-            CalcuOneTextureEValue(glcm_norm, EValue, false);
-            energy += EValue.energy; contrast += EValue.contrast;
-            homogenity += EValue.homogenity; entropy += EValue.entropy;
+            // CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_45);
+            // NormalizeMat(glcm_win, glcm_norm);
+            // CalcuOneTextureEValue(glcm_norm, EValue, false);
+            // energy += EValue.energy; contrast += EValue.contrast;
+            // homogenity += EValue.homogenity; entropy += EValue.entropy;
 
             CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_90);
             NormalizeMat(glcm_win, glcm_norm);
@@ -584,16 +585,16 @@ void GLCM::CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& im
             energy += EValue.energy; contrast += EValue.contrast;
             homogenity += EValue.homogenity; entropy += EValue.entropy;
 
-            CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_135);
-            NormalizeMat(glcm_win, glcm_norm);
-            CalcuOneTextureEValue(glcm_norm, EValue, false);
-            energy += EValue.energy; contrast += EValue.contrast;
-            homogenity += EValue.homogenity; entropy += EValue.entropy;
+            // CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_135);
+            // NormalizeMat(glcm_win, glcm_norm);
+            // CalcuOneTextureEValue(glcm_norm, EValue, false);
+            // energy += EValue.energy; contrast += EValue.contrast;
+            // homogenity += EValue.homogenity; entropy += EValue.entropy;
 
             // 将所有方向计算得到的特征值平均化，得到的值即可消除统计方向影响
             // average Eigenvalues of all Statistical Directions, then the average value has eliminated the effect of Statistical Directions
-            energy /= 4; contrast /= 4;
-            homogenity /= 4; entropy /= 4;
+            energy /= 1; contrast /= 1;
+            homogenity /= 1; entropy /= 1;
 
             energyData[j] = energy;
             contrastData[j] = contrast;
