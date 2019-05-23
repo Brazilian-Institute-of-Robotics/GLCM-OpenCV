@@ -534,7 +534,8 @@ void GLCM::CalcuTextureEValue(Mat src, TextureEValues& EValue, int size, GrayLev
 =====================================================================
 */
 void GLCM::CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& imgHomogenity, Mat& imgEntropy,
-                        int size, GrayLevel level, bool ToAdjustImg)
+                        int size, GrayLevel level, bool ToAdjustImg,
+                        const vector<GrayDirection>& directions)
 {
     // 窗口矩阵
     // Window Matrix
@@ -567,34 +568,20 @@ void GLCM::CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& im
             float energy, contrast, homogenity, entropy;
             energy = contrast = homogenity = entropy = 0;
 
-            // CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_0);
-            // NormalizeMat(glcm_win, glcm_norm);
-            // CalcuOneTextureEValue(glcm_norm, EValue, false);
-            // energy += EValue.energy; contrast += EValue.contrast;
-            // homogenity += EValue.homogenity; entropy += EValue.entropy;
-
-            // CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_45);
-            // NormalizeMat(glcm_win, glcm_norm);
-            // CalcuOneTextureEValue(glcm_norm, EValue, false);
-            // energy += EValue.energy; contrast += EValue.contrast;
-            // homogenity += EValue.homogenity; entropy += EValue.entropy;
-
-            CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_90);
-            NormalizeMat(glcm_win, glcm_norm);
-            CalcuOneTextureEValue(glcm_norm, EValue, false);
-            energy += EValue.energy; contrast += EValue.contrast;
-            homogenity += EValue.homogenity; entropy += EValue.entropy;
-
-            // CalcuOneGLCM(src, glcm_win, i, j, size, level, DIR_135);
-            // NormalizeMat(glcm_win, glcm_norm);
-            // CalcuOneTextureEValue(glcm_norm, EValue, false);
-            // energy += EValue.energy; contrast += EValue.contrast;
-            // homogenity += EValue.homogenity; entropy += EValue.entropy;
+            for(auto const& dir: directions)
+            {
+              CalcuOneGLCM(src, glcm_win, i, j, size, level, dir);
+              NormalizeMat(glcm_win, glcm_norm);
+              CalcuOneTextureEValue(glcm_norm, EValue, false);
+              energy += EValue.energy; contrast += EValue.contrast;
+              homogenity += EValue.homogenity; entropy += EValue.entropy;
+            }
 
             // 将所有方向计算得到的特征值平均化，得到的值即可消除统计方向影响
             // average Eigenvalues of all Statistical Directions, then the average value has eliminated the effect of Statistical Directions
-            energy /= 1; contrast /= 1;
-            homogenity /= 1; entropy /= 1;
+            int numDirections = directions.size();
+            energy /= numDirections; contrast /= numDirections;
+            homogenity /= numDirections; entropy /= numDirections;
 
             energyData[j] = energy;
             contrastData[j] = contrast;

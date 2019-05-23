@@ -105,7 +105,7 @@ public:
 
     // 计算整幅图像的纹理特征
     void CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& imgHomogenity, Mat& imgEntropy,
-                            int size = 5, GrayLevel level = GRAY_8, bool ToAdjustImg = false);
+                            int size = 5, GrayLevel level = GRAY_8, bool ToAdjustImg = false, const vector<GrayDirection>& directions = {DIR_0,DIR_45,DIR_90,DIR_135});
 };
 
 #endif // GLCM_H
