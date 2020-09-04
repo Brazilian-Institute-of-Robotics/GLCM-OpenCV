@@ -21,6 +21,9 @@
 
 #include "glcm.h"
 
+#include <iostream>
+#include <fstream>
+
 /*===================================================================
  * 函数名：getOneChannel
  * 说明：从彩色通道中提取一个通道；
@@ -99,7 +102,9 @@ void GLCM::GrayMagnitude(Mat src, Mat& dst, GrayLevel level)
 
     // 直方图均衡化
     // Equalize Histogram
-    equalizeHist(tmp, tmp);
+    // equalizeHist(tmp, tmp);
+
+    cv::FileStorage temp_file("output.json", cv::FileStorage::WRITE);
 
     for(int j = 0; j < tmp.rows; j++)
     {
@@ -125,6 +130,14 @@ void GLCM::GrayMagnitude(Mat src, Mat& dst, GrayLevel level)
             }
         }
     }
+
+    temp_file << "Gray matrix" << Mat(src, Range(0, 100), Range(0, 100));
+    temp_file.release();
+
+    ofstream myfile;
+    myfile.open("output_fstream.txt");
+    myfile << Mat(dst, Range(0, 100), Range(0, 100));
+    myfile.close();
 }
 
 /*===================================================================
@@ -272,22 +285,22 @@ void GLCM::CalcuOneGLCM(Mat src, Mat& dst, int src_i, int src_j, int size, GrayL
     case DIR_0:
         for(int i = 0; i < srcCut.rows; i++)
             for(int j = 0; j < srcCut.cols - 1; j++)
-                glcm.at<uchar>(srcCut.at<uchar>(j, i), srcCut.at<uchar>(j+1, i))++;
+                glcm.at<uchar>(srcCut.at<uchar>(i, j), srcCut.at<uchar>(i, j+1))++;
         break;
     case DIR_45:
         for(int i = 0; i < srcCut.rows - 1; i++)
             for(int j = 0; j < srcCut.cols - 1; j++)
-                glcm.at<uchar>(srcCut.at<uchar>(j, i), srcCut.at<uchar>(j+1, i+1))++;
+                glcm.at<uchar>(srcCut.at<uchar>(i, j), srcCut.at<uchar>(i+1, j+1))++;
         break;
     case DIR_90:
         for(int i = 0; i < srcCut.rows - 1; i++)
             for(int j = 0; j < srcCut.cols; j++)
-                glcm.at<uchar>(srcCut.at<uchar>(j, i), srcCut.at<uchar>(j, i+1))++;
+                glcm.at<uchar>(srcCut.at<uchar>(i, j), srcCut.at<uchar>(i+1, j))++;
         break;
     case DIR_135:
         for(int i = 1; i < srcCut.rows; i++)
             for(int j = 0; j < srcCut.cols - 1; j++)
-                glcm.at<uchar>(srcCut.at<uchar>(j, i), srcCut.at<uchar>(j+1, i-1))++;
+                glcm.at<uchar>(srcCut.at<uchar>(i, j), srcCut.at<uchar>(i-1, j+1))++;
         break;
     default:
         cout<<"ERROR in CalcuOneGLCM(): No such Direct."<<endl;
@@ -299,6 +312,13 @@ void GLCM::CalcuOneGLCM(Mat src, Mat& dst, int src_i, int src_j, int size, GrayL
     // Normalize GLCM
     NormalizeMat(glcm, glcm_dst);
     glcm_dst.copyTo(dst);
+
+    if(src_i - size/2 == 16 && src_j - size/2 == 466 && direct == DIR_0) {
+      std::cout << size << std::endl;
+      std::cout << srcCut.size() << std::endl;
+      std::cout << srcCut << std::endl;
+      std::cout << glcm_dst << std::endl;
+    }
 }
 
 /*===================================================================
@@ -388,12 +408,15 @@ void GLCM::CalcuOneTextureEValue(Mat src, TextureEValues& EValue, bool ToCheckMa
     for(int i = 0; i < src.rows; i++)
         for(int j = 0; j < src.cols; j++)
         {
-            EValue.energy += powf(src.at<float>(j, i), 2);
+            EValue.energy += powf(src.at<float>(i, j), 2);
             EValue.contrast += (powf((i - j), 2) * src.at<float>(j, i) );
             EValue.homogenity += (src.at<float>(j, i) / (1 + fabs((float)(i - j))) );
             if(src.at<float>(j, i) != 0)
                 EValue.entropy -= (src.at<float>(j, i) * log10(src.at<float>(j, i)) );
         }
+      
+    
+    EValue.energy = sqrt(EValue.energy);
 }
 
 /*===================================================================
@@ -571,8 +594,13 @@ void GLCM::CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& im
             for(auto const& dir: directions)
             {
               CalcuOneGLCM(src, glcm_win, i, j, size, level, dir);
-              NormalizeMat(glcm_win, glcm_norm);
-              CalcuOneTextureEValue(glcm_norm, EValue, false);
+              // NormalizeMat(glcm_win, glcm_norm);
+              CalcuOneTextureEValue(glcm_win, EValue, false);
+              if(i - size/2 == 16 && j - size/2 == 466 && dir == DIR_0) {
+                std::cout << size << std::endl;
+                std::cout << "Energy: " << EValue.energy << std::endl;
+                std::cout << glcm_win << std::endl;
+              }
               energy += EValue.energy; contrast += EValue.contrast;
               homogenity += EValue.homogenity; entropy += EValue.entropy;
             }
