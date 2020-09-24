@@ -21,13 +21,15 @@
 #ifndef GLCM_H
 #define GLCM_H
 
+#include <math.h>
+
+#include <iostream>
+
 #include "cv.h"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/core/core.hpp"
-#include "iostream"
-#include <math.h>
 
 using namespace cv;
 using namespace std;
@@ -38,7 +40,16 @@ enum GrayLevel
 {
     GRAY_4,
     GRAY_8,
-    GRAY_16
+    GRAY_16,
+    GRAY_128,
+    GRAY_256
+};
+
+enum GrayRoundType
+{
+    GRAY_ROUND_NONE,
+    GRAY_ROUND_HALF,
+    GRAY_ROUND_ALL
 };
 
 // 灰度统计方向
@@ -84,11 +95,11 @@ public:
 
     // 将灰度图中的所有像素值量级化，可以被量化为4/8/16个等级
     // Magnitude all pixels of Gray Image, and Magnitude Level can be chosen in 4/8/16;
-    void GrayMagnitude(Mat src, Mat& dst, GrayLevel level = GRAY_8);
+    void GrayMagnitude(Mat src, Mat& dst, GrayLevel level = GRAY_8, GrayRoundType roundType = GRAY_ROUND_HALF);
 
     // 计算一个矩阵窗口中，按照某个方向统计的灰度共生矩阵
     // Calculate the GLCM of one Mat Window according to one Statistical Direction.
-    void CalcuOneGLCM(Mat src, Mat &dst, int src_i, int src_j, int size, GrayLevel level = GRAY_8, GrayDirection direct = DIR_0);
+    void CalcuOneGLCM(Mat src, SparseMat &dst, int src_i, int src_j, int size, GrayLevel level = GRAY_8, GrayDirection direct = DIR_0);
 
     // 矩阵的归一化，将矩阵所有元素与矩阵中所有元素之和作除运算，得到概率矩阵
     //   Normalize the Martix, make all pixels of Mat divided by the sum of all pixels of Mat, then get Probability Matrix.
@@ -96,7 +107,7 @@ public:
 
     // 计算单个窗口矩阵的图像纹理特征值，包括能量、对比度、相关度、熵
     // Calculate Texture Eigenvalues of One Window Mat, which is including Energy, Contrast, Homogenity, Entropy.
-    void CalcuOneTextureEValue(Mat src, TextureEValues& EValue, bool ToCheckMat = false);
+    void CalcuOneTextureEValue(SparseMat src, TextureEValues& EValue, bool ToCheckMat = false);
 
     // 计算全图的图像纹理特征值，包括能量、对比度、相关度、熵
     // Calculate Texture Eigenvalues of One Window Mat, which is including Energy, Contrast, Homogenity, Entropy.
@@ -106,6 +117,9 @@ public:
     // 计算整幅图像的纹理特征
     void CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& imgHomogenity, Mat& imgEntropy,
                             int size = 5, GrayLevel level = GRAY_8, bool ToAdjustImg = false, const vector<GrayDirection>& directions = {DIR_0,DIR_45,DIR_90,DIR_135});
+
+    void Glcm(Mat src, int window, uint8_t level);
+
 };
 
 #endif // GLCM_H

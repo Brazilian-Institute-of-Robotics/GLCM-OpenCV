@@ -90,7 +90,7 @@ void GLCM::getOneChannel(Mat src, Mat& dstChannel, RGBChannel channel)
  *   void
 =====================================================================
 */
-void GLCM::GrayMagnitude(Mat src, Mat& dst, GrayLevel level)
+void GLCM::GrayMagnitude(Mat src, Mat& dst, GrayLevel level, GrayRoundType roundType)
 {
     Mat tmp;
     src.copyTo(tmp);
@@ -99,33 +99,61 @@ void GLCM::GrayMagnitude(Mat src, Mat& dst, GrayLevel level)
 
     // 直方图均衡化
     // Equalize Histogram
-    equalizeHist(tmp, tmp);
+    // equalizeHist(tmp, tmp);
 
-    for(int j = 0; j < tmp.rows; j++)
+    int scale_factor;
+    switch(level)
     {
-        const uchar* current = tmp.ptr<uchar>(j);
-        uchar* output = dst.ptr<uchar>(j);
-
-        for(int i = 0; i < tmp.cols; i++)
+    case GRAY_4:
+        scale_factor = 64;
+        break;
+    case GRAY_8:
+        scale_factor = 32;
+        break;
+    case GRAY_16:
+        scale_factor = 16;
+        break;
+    case GRAY_128:
+        scale_factor = 2;
+        break;
+    case GRAY_256:
+        scale_factor = 1;
+        break;
+    default:
+        cout<<"ERROR in GrayMagnitude(): No Such GrayLevel."<<endl;
+        return ;
+    }
+    
+    
+    switch(roundType) {
+      case GRAY_ROUND_HALF:
+        for(int j = 0; j < tmp.rows; j++)
         {
-            switch(level)
+            const uchar* current = tmp.ptr<uchar>(j);
+            uchar* output = dst.ptr<uchar>(j);
+
+            for(int i = 0; i < tmp.cols; i++)
             {
-            case GRAY_4:
-                output[i] = cv::saturate_cast<uchar>(current[i] / 64);
-                break;
-            case GRAY_8:
-                output[i] = cv::saturate_cast<uchar>(current[i] / 32);
-                break;
-            case GRAY_16:
-                output[i] = cv::saturate_cast<uchar>(current[i] / 16);
-                break;
-            default:
-                cout<<"ERROR in GrayMagnitude(): No Such GrayLevel."<<endl;
-                return ;
+                
+              output[i] = cv::saturate_cast<uchar>(current[i] / scale_factor);
             }
         }
+        break;
+      case GRAY_ROUND_NONE:
+        src.convertTo(dst, CV_8U, 1. / scale_factor, 0.0);
+        break;
+      case GRAY_ROUND_ALL:
+        src.convertTo(dst, CV_8U, 1. / scale_factor, -0.5);
+        break;
     }
+
+    // ofstream myfile;
+    // myfile.open("output_fstream.txt");
+    // myfile << Mat(dst, Range(0, 100), Range(400, 500));
+    // myfile.close();
 }
+
+
 
 /*===================================================================
  * 函数名：CalcuOneGLCM
@@ -160,11 +188,11 @@ void GLCM::GrayMagnitude(Mat src, Mat& dst, GrayLevel level)
  *   void
 =====================================================================
 */
-void GLCM::CalcuOneGLCM(Mat src, Mat& dst, int src_i, int src_j, int size, GrayLevel level, GrayDirection direct)
+void GLCM::CalcuOneGLCM(Mat src, SparseMat& dst, int src_i, int src_j, int size, GrayLevel level, GrayDirection direct)
 {
     // 灰度共生矩阵
     // GLCM
-    Mat glcm;
+    SparseMat glcm;
 
     // 窗口矩阵
     // Window Matrix
@@ -238,26 +266,32 @@ void GLCM::CalcuOneGLCM(Mat src, Mat& dst, int src_i, int src_j, int size, GrayL
     {
     case GRAY_4:
     {
-        glcm = Mat_<uchar>(4, 4);
-        for(int i = 0; i < 4; i++)
-            for(int j = 0; j < 4; j++)
-                glcm.at<uchar>(j, i) = 0;
+        int size[2] = {4, 4};
+        glcm = SparseMat(2, size, CV_32F);
         break;
     }
     case GRAY_8:
     {
-        glcm = Mat_<uchar>(8, 8);
-        for(int i = 0; i < 8; i++)
-            for(int j = 0; j < 8; j++)
-                glcm.at<uchar>(j, i) = 0;
+        int size[2] = {8, 8};
+        glcm = SparseMat(2, size, CV_32F);
         break;
     }
     case GRAY_16:
     {
-        glcm = Mat_<uchar>(16, 16);
-        for(int i = 0; i < 16; i++)
-            for(int j = 0; j < 16; j++)
-                glcm.at<uchar>(j, i) = 0;
+        int size[2] = {16, 16};
+        glcm = SparseMat(2, size, CV_32F);
+        break;
+    }
+    case GRAY_128:
+    {
+        int size[2] = {128, 128};
+        glcm = SparseMat(2, size, CV_32F);
+        break;
+    }
+    case GRAY_256:
+    {
+        int size[2] = {256, 256};
+        glcm = SparseMat(2, size, CV_32F);
         break;
     }
     default:
@@ -272,32 +306,32 @@ void GLCM::CalcuOneGLCM(Mat src, Mat& dst, int src_i, int src_j, int size, GrayL
     case DIR_0:
         for(int i = 0; i < srcCut.rows; i++)
             for(int j = 0; j < srcCut.cols - 1; j++)
-                glcm.at<uchar>(srcCut.at<uchar>(j, i), srcCut.at<uchar>(j+1, i))++;
+                glcm.ref<float>((int)srcCut.at<uchar>(i, j),(int)srcCut.at<uchar>(i, j+1))++;
         break;
     case DIR_45:
         for(int i = 0; i < srcCut.rows - 1; i++)
             for(int j = 0; j < srcCut.cols - 1; j++)
-                glcm.at<uchar>(srcCut.at<uchar>(j, i), srcCut.at<uchar>(j+1, i+1))++;
+              glcm.ref<float>((int)srcCut.at<uchar>(i, j),(int)srcCut.at<uchar>(i+1, j+1))++;
         break;
     case DIR_90:
         for(int i = 0; i < srcCut.rows - 1; i++)
             for(int j = 0; j < srcCut.cols; j++)
-                glcm.at<uchar>(srcCut.at<uchar>(j, i), srcCut.at<uchar>(j, i+1))++;
+              glcm.ref<float>((int)srcCut.at<uchar>(i, j),(int)srcCut.at<uchar>(i+1, j))++;
         break;
     case DIR_135:
         for(int i = 1; i < srcCut.rows; i++)
             for(int j = 0; j < srcCut.cols - 1; j++)
-                glcm.at<uchar>(srcCut.at<uchar>(j, i), srcCut.at<uchar>(j+1, i-1))++;
+              glcm.ref<float>((int)srcCut.at<uchar>(i, j),(int)srcCut.at<uchar>(i-1, j+1))++;
         break;
     default:
         cout<<"ERROR in CalcuOneGLCM(): No such Direct."<<endl;
         break;
     }
 
-    Mat glcm_dst;
+    SparseMat glcm_dst;
     // 灰度共生矩阵归一化
     // Normalize GLCM
-    NormalizeMat(glcm, glcm_dst);
+    cv::normalize(glcm, glcm_dst, 1, NORM_L1);
     glcm_dst.copyTo(dst);
 }
 
@@ -365,35 +399,40 @@ void GLCM::NormalizeMat(Mat src, Mat& dst)
  *   void
 =====================================================================
 */
-void GLCM::CalcuOneTextureEValue(Mat src, TextureEValues& EValue, bool ToCheckMat)
+void GLCM::CalcuOneTextureEValue(SparseMat src, TextureEValues& EValue, bool ToCheckMat)
 {
     if(ToCheckMat)
-    {
+    {   SparseMatConstIterator_<float> it_check = src.begin<float>(),
+                                   it_check_end = src.end<float>();
         float sum = 0;
-        for(int i = 0; i < src.rows; i++)
-            for(int j = 0; j < src.cols; j++)
-                sum += src.at<float>(j, i);
+         for(; it_check != it_check_end; ++it_check)
+            sum += *it_check;
         if(sum < 0.99 || sum > 1.01)
         {
             cout<<"ERROR in CalcuOneTextureEValue(): Sum of the Mat is not equal to 1.00."<<endl;
             return ;
         }
     }
-
+  int i_temp = 0;
     EValue.contrast = 0;
     EValue.energy = 0;
     EValue.entropy = 0;
     EValue.homogenity = 0;
 
-    for(int i = 0; i < src.rows; i++)
-        for(int j = 0; j < src.cols; j++)
-        {
-            EValue.energy += powf(src.at<float>(j, i), 2);
-            EValue.contrast += (powf((i - j), 2) * src.at<float>(j, i) );
-            EValue.homogenity += (src.at<float>(j, i) / (1 + fabs((float)(i - j))) );
-            if(src.at<float>(j, i) != 0)
-                EValue.entropy -= (src.at<float>(j, i) * log10(src.at<float>(j, i)) );
-        }
+    SparseMatConstIterator_<float> it = src.begin<float>(),
+                                   it_end = src.end<float>();
+    for(; it != it_end; ++it)
+    {
+        // take the next element from the first matrix
+        float avalue = *it;
+        const SparseMat::Node* anode = it.node();
+        EValue.energy += powf(avalue, 2);
+        EValue.contrast += (powf((anode->idx[0] - anode->idx[1]), 2) * avalue);
+        EValue.homogenity += (avalue / (1 + fabs((float)(anode->idx[0] - anode->idx[1]))) );
+        EValue.entropy -= (avalue * log10(avalue) );
+        i_temp++;
+    }
+    EValue.energy = sqrt(EValue.energy);
 }
 
 /*===================================================================
@@ -430,7 +469,7 @@ void GLCM::CalcuTextureEValue(Mat src, TextureEValues& EValue, int size, GrayLev
 
     // 窗口矩阵
     // Window Matrix
-    Mat glcm_win;
+    SparseMat glcm_win;
 
     // 归一化后的概率矩阵
     // Probability Matrix after Normalizing
@@ -461,26 +500,22 @@ void GLCM::CalcuTextureEValue(Mat src, TextureEValues& EValue, int size, GrayLev
             energy = contrast = homogenity = entropy = 0;
 
             CalcuOneGLCM(imgGray, glcm_win, i, j, size, level, DIR_0);
-            NormalizeMat(glcm_win, glcm_norm);
-            CalcuOneTextureEValue(glcm_norm, EValue_temp, false);
+            CalcuOneTextureEValue(glcm_win, EValue_temp, false);
             energy += EValue_temp.energy; contrast += EValue_temp.contrast;
             homogenity += EValue_temp.homogenity; entropy += EValue_temp.entropy;
 
             CalcuOneGLCM(imgGray, glcm_win, i, j, size, level, DIR_45);
-            NormalizeMat(glcm_win, glcm_norm);
-            CalcuOneTextureEValue(glcm_norm, EValue_temp, false);
+            CalcuOneTextureEValue(glcm_win, EValue_temp, false);
             energy += EValue_temp.energy; contrast += EValue_temp.contrast;
             homogenity += EValue_temp.homogenity; entropy += EValue_temp.entropy;
 
             CalcuOneGLCM(imgGray, glcm_win, i, j, size, level, DIR_90);
-            NormalizeMat(glcm_win, glcm_norm);
-            CalcuOneTextureEValue(glcm_norm, EValue_temp, false);
+            CalcuOneTextureEValue(glcm_win, EValue_temp, false);
             energy += EValue_temp.energy; contrast += EValue_temp.contrast;
             homogenity += EValue_temp.homogenity; entropy += EValue_temp.entropy;
 
             CalcuOneGLCM(imgGray, glcm_win, i, j, size, level, DIR_135);
-            NormalizeMat(glcm_win, glcm_norm);
-            CalcuOneTextureEValue(glcm_norm, EValue_temp, false);
+            CalcuOneTextureEValue(glcm_win, EValue_temp, false);
             energy += EValue_temp.energy; contrast += EValue_temp.contrast;
             homogenity += EValue_temp.homogenity; entropy += EValue_temp.entropy;
 
@@ -539,7 +574,7 @@ void GLCM::CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& im
 {
     // 窗口矩阵
     // Window Matrix
-    Mat glcm_win;
+    SparseMat glcm_win;
 
     // 归一化后的概率矩阵
     // Probability Matrix after Normalizing
@@ -571,8 +606,8 @@ void GLCM::CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& im
             for(auto const& dir: directions)
             {
               CalcuOneGLCM(src, glcm_win, i, j, size, level, dir);
-              NormalizeMat(glcm_win, glcm_norm);
-              CalcuOneTextureEValue(glcm_norm, EValue, false);
+              CalcuOneTextureEValue(glcm_win, EValue, false);
+              // std::cout << i << " and " << j << "Source cols " << src.cols << "Energy "<< EValue.energy << " " << '\r';
               energy += EValue.energy; contrast += EValue.contrast;
               homogenity += EValue.homogenity; entropy += EValue.entropy;
             }
@@ -603,4 +638,9 @@ void GLCM::CalcuTextureImages(Mat src, Mat& imgEnergy, Mat& imgContrast, Mat& im
         imgEntropy.convertTo(imgEntropy, CV_8UC1);
         imgHomogenity.convertTo(imgHomogenity, CV_8UC1);
     }
+}
+
+
+void GLCM::Glcm(Mat src, int window, uint8_t level) {
+  
 }
